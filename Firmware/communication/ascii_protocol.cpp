@@ -102,15 +102,15 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
         } else if (motor_number >= AXIS_COUNT) {
             respond(response_channel, use_checksum, "invalid motor %u", motor_number);
         } else {
-            Axis* axis = axes[motor_number];
-            axis->controller_.config_.control_mode = Controller::CONTROL_MODE_POSITION_CONTROL;
-            axis->controller_.input_pos_ = pos_setpoint;
+            Axis& axis = axes[motor_number];
+            axis.controller_.config_.control_mode = Controller::CONTROL_MODE_POSITION_CONTROL;
+            axis.controller_.input_pos_ = pos_setpoint;
             if (numscan >= 3)
-                axis->controller_.input_vel_ = vel_feed_forward;
+                axis.controller_.input_vel_ = vel_feed_forward;
             if (numscan >= 4)
-                axis->controller_.input_torque_ = torque_feed_forward;
-            axis->controller_.input_pos_updated();
-            axis->watchdog_feed();
+                axis.controller_.input_torque_ = torque_feed_forward;
+            axis.controller_.input_pos_updated();
+            axis.watchdog_feed();
         }
 
     } else if (cmd[0] == 'q') { // position control with limits
@@ -122,15 +122,15 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
         } else if (motor_number >= AXIS_COUNT) {
             respond(response_channel, use_checksum, "invalid motor %u", motor_number);
         } else {
-            Axis* axis = axes[motor_number];
-            axis->controller_.config_.control_mode = Controller::CONTROL_MODE_POSITION_CONTROL;
-            axis->controller_.input_pos_ = pos_setpoint;
+            Axis& axis = axes[motor_number];
+            axis.controller_.config_.control_mode = Controller::CONTROL_MODE_POSITION_CONTROL;
+            axis.controller_.input_pos_ = pos_setpoint;
             if (numscan >= 3)
-                axis->controller_.config_.vel_limit = vel_limit;
+                axis.controller_.config_.vel_limit = vel_limit;
             if (numscan >= 4)
-                axis->motor_.config_.torque_lim = torque_lim;
-            axis->controller_.input_pos_updated();
-            axis->watchdog_feed();
+                axis.motor_.config_.torque_lim = torque_lim;
+            axis.controller_.input_pos_updated();
+            axis.watchdog_feed();
         }
 
     } else if (cmd[0] == 'v') { // velocity control
@@ -142,12 +142,12 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
         } else if (motor_number >= AXIS_COUNT) {
             respond(response_channel, use_checksum, "invalid motor %u", motor_number);
         } else {
-            Axis* axis = axes[motor_number];
-            axis->controller_.config_.control_mode = Controller::CONTROL_MODE_VELOCITY_CONTROL;
-            axis->controller_.input_vel_ = vel_setpoint;
+            Axis& axis = axes[motor_number];
+            axis.controller_.config_.control_mode = Controller::CONTROL_MODE_VELOCITY_CONTROL;
+            axis.controller_.input_vel_ = vel_setpoint;
             if (numscan >= 3)
-                axis->controller_.input_torque_ = torque_feed_forward;
-            axis->watchdog_feed();
+                axis.controller_.input_torque_ = torque_feed_forward;
+            axis.watchdog_feed();
         }
 
     } else if (cmd[0] == 'c') { // torque control
@@ -159,10 +159,10 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
         } else if (motor_number >= AXIS_COUNT) {
             respond(response_channel, use_checksum, "invalid motor %u", motor_number);
         } else {
-            Axis* axis = axes[motor_number];
-            axis->controller_.config_.control_mode = Controller::CONTROL_MODE_TORQUE_CONTROL;
-            axis->controller_.input_torque_ = torque_setpoint;
-            axis->watchdog_feed();
+            Axis& axis = axes[motor_number];
+            axis.controller_.config_.control_mode = Controller::CONTROL_MODE_TORQUE_CONTROL;
+            axis.controller_.input_torque_ = torque_setpoint;
+            axis.watchdog_feed();
         }
 
     } else if (cmd[0] == 't') { // trapezoidal trajectory
@@ -174,10 +174,10 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
         } else if (motor_number >= AXIS_COUNT) {
             respond(response_channel, use_checksum, "invalid motor %u", motor_number);
         } else {
-            Axis* axis = axes[motor_number];
-            axis->controller_.config_.input_mode = Controller::INPUT_MODE_TRAP_TRAJ;
-            axis->controller_.move_to_pos(goal_point);
-            axis->watchdog_feed();
+            Axis& axis = axes[motor_number];
+            axis.controller_.config_.input_mode = Controller::INPUT_MODE_TRAP_TRAJ;
+            axis.controller_.move_to_pos(goal_point);
+            axis.watchdog_feed();
         }
 
     } else if (cmd[0] == 'f') { // feedback
@@ -189,8 +189,8 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
             respond(response_channel, use_checksum, "invalid motor %u", motor_number);
         } else {
             respond(response_channel, use_checksum, "%f %f",
-                    (double)axes[motor_number]->encoder_.pos_estimate_,
-                    (double)axes[motor_number]->encoder_.vel_estimate_);
+                    (double)axes[motor_number].encoder_.pos_estimate_,
+                    (double)axes[motor_number].encoder_.vel_estimate_);
         }
 
     } else if (cmd[0] == 'h') {  // Help
@@ -273,7 +273,7 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
         } else if (motor_number >= AXIS_COUNT) {
             respond(response_channel, use_checksum, "invalid motor %u", motor_number);
         }else {
-            axes[motor_number]->watchdog_feed();
+            axes[motor_number].watchdog_feed();
         }
 
     } else if (cmd[0] != 0) {
