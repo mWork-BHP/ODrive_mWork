@@ -61,4 +61,5 @@ ODrive\.files
 ODrive\.includes
 
 Firmware/Tests/bin/
+Firmware/%SystemDrive%
 /Install
