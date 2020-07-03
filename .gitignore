@@ -37,7 +37,9 @@ target/
 .tup
 tup.config
 
+/Install
 /ruby-bundle
 /_site
 /.bundle
 
+*.exe
