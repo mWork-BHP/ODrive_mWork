@@ -37,10 +37,22 @@ target/
 .tup
 tup.config
 
-/Install
-/ruby-bundle
-/_site
-/.bundle
+docs/ruby-bundle
+docs/_site
+docs/.bundle
+docs/Gemfile.lock
+
 
 *.exe
-*.db
+
+ODrive\.config
+
+ODrive\.creator
+
+ODrive\.creator\.user
+
+ODrive\.files
+
+ODrive\.includes
+
+Firmware/Tests/bin/
