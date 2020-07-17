@@ -434,7 +434,7 @@ void Encoder::abs_spi_cs_pin_init(){
 bool Encoder::update() {
     // update internal encoder state.
     int32_t delta_enc = 0;
-
+    int32_t pos_abs_latched = pos_abs_; //LATCH
     switch (mode_) {
         case MODE_INCREMENTAL: {
             //TODO: use count_in_cpr_ instead as shadow_count_ can overflow
@@ -480,10 +480,12 @@ bool Encoder::update() {
             } else {
                 // Low pass filter the error
                 spi_error_rate_ += current_meas_period * (0.0f - spi_error_rate_);
+                if ((spi_error_rate_ < 0.00005f) & (error_==ERROR_ABS_SPI_COM_FAIL)) error_=ERROR_NONE;
             }
 
             abs_spi_pos_updated_ = false;
-            delta_enc = pos_abs_ - count_in_cpr_;
+            delta_enc = pos_abs_latched - count_in_cpr_; //LATCH
+            //delta_enc = pos_abs_ - count_in_cpr_;
             delta_enc = mod(delta_enc, config_.cpr);
             if (delta_enc > config_.cpr/2) {
                 delta_enc -= config_.cpr;
@@ -501,7 +503,8 @@ bool Encoder::update() {
     count_in_cpr_ = mod(count_in_cpr_, config_.cpr);
 
     if(mode_ & MODE_FLAG_ABS)
-        count_in_cpr_ = pos_abs_;
+        count_in_cpr_ = pos_abs_latched;
+        //count_in_cpr_ = pos_abs_;
 
     //// run pll (for now pll is in units of encoder counts)
     // Predict current pos
@@ -519,6 +522,7 @@ bool Encoder::update() {
     bool snap_to_zero_vel = false;
     if (std::abs(vel_estimate_) < 0.5f * current_meas_period * pll_ki_) {
         vel_estimate_ = 0.0f;  //align delta-sigma on zero to prevent jitter
+        if (mWorkFirstTime_) mWorkFirstTime_ = false;
         snap_to_zero_vel = true;
     }
 
@@ -550,5 +554,6 @@ bool Encoder::update() {
 
     vel_estimate_valid_ = true;
     pos_estimate_valid_ = true;
+   
     return true;
 }

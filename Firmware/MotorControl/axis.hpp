@@ -82,7 +82,9 @@ public:
         // Defaults loaded from hw_config in load_configuration in main.cpp
         uint16_t step_gpio_pin = 0;
         uint16_t dir_gpio_pin = 0;
-
+        uint16_t en_gpio_pin = 0;  
+        bool use_enable_pin = false;
+        bool enable_pin_active_low = false; 
         LockinConfig_t calibration_lockin = default_calibration();
         LockinConfig_t sensorless_ramp = default_sensorless();
         LockinConfig_t lockin;
@@ -152,7 +154,8 @@ public:
     bool inline check_for_errors() {
         return error_ == ERROR_NONE;
     }
-
+    void enable_pin_check();
+    void use_enable_pin_update();
     // @brief Runs the specified update handler at the frequency of the current measurements.
     //
     // The loop runs until one of the following conditions:
@@ -175,7 +178,9 @@ public:
     // @tparam T Must be a callable type that takes no arguments and returns a bool
     template<typename T>
     void run_control_loop(const T& update_handler) {
+        enable_pin_check(); // This can override requested_state_ based on the enable pin state.
         while (requested_state_ == AXIS_STATE_UNDEFINED) {
+            enable_pin_check(); // This can override requested_state_ based on the enable pin state.
             // look for errors at axis level and also all subcomponents
             bool checks_ok = do_checks();
             // Update all estimators
@@ -239,7 +244,8 @@ public:
     Endstop& max_endstop_;
 
     osThreadId thread_id_;
-    const uint32_t stack_size_ = 2048; // Bytes
+    const uint32_t stack_size_ = 4096; // Bytes
+    //30722048
     volatile bool thread_id_valid_ = false;
 
     // variables exposed on protocol
@@ -251,9 +257,12 @@ public:
     uint16_t step_pin_;
     GPIO_TypeDef* dir_port_;
     uint16_t dir_pin_;
+    GPIO_TypeDef* en_port_;
+    uint16_t en_pin_;
 
     State_t requested_state_ = AXIS_STATE_STARTUP_SEQUENCE;
-    std::array<State_t, 10> task_chain_ = { AXIS_STATE_UNDEFINED };
+    //State_t requested_state_ = AXIS_STATE_IDLE;
+    std::array<State_t, 10> task_chain_ = { AXIS_STATE_UNDEFINED }; //AXIS_STATE_UNDEFINED
     State_t& current_state_ = task_chain_.front();
     uint32_t loop_counter_ = 0;
     LockinState_t lockin_state_ = LOCKIN_STATE_INACTIVE;
@@ -262,7 +271,7 @@ public:
 
     // watchdog
     uint32_t watchdog_current_value_= 0;
-
+    bool startup_sequence_done_ = false;    
     // Communication protocol definitions
     auto make_protocol_definitions() {
         return make_protocol_member_list(
@@ -285,6 +294,10 @@ public:
                 make_protocol_property("counts_per_step", &config_.counts_per_step),
                 make_protocol_property("watchdog_timeout", &config_.watchdog_timeout),
                 make_protocol_property("enable_watchdog", &config_.enable_watchdog),
+                make_protocol_property("use_enable_pin", &config_.use_enable_pin),
+                make_protocol_property("enable_pin_active_low", &config_.enable_pin_active_low),
+                make_protocol_property("en_gpio_pin", &config_.en_gpio_pin,
+                                    [](void* ctx) { static_cast<Axis*>(ctx)->decode_step_dir_pins(); }, this),
                 make_protocol_property("step_gpio_pin", &config_.step_gpio_pin,
                                     [](void* ctx) { static_cast<Axis*>(ctx)->decode_step_dir_pins(); }, this),
                 make_protocol_property("dir_gpio_pin", &config_.dir_gpio_pin,

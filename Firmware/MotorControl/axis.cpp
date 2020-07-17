@@ -17,8 +17,8 @@ Axis::Axis(int axis_num,
            Motor& motor,
            TrapezoidalTrajectory& trap,
            Endstop& min_endstop,
-           Endstop& max_endstop)
-    : axis_num_(axis_num),
+           Endstop& max_endstop): 
+      axis_num_(axis_num),
       hw_config_(hw_config),
       config_(config),
       encoder_(encoder),
@@ -72,10 +72,24 @@ static void step_cb_wrapper(void* ctx) {
     reinterpret_cast<Axis*>(ctx)->step_cb();
 }
 
-
+void Axis::use_enable_pin_update() {
+    if (config_.use_enable_pin) {
+        GPIO_InitTypeDef GPIO_InitStruct;
+        GPIO_InitStruct.Pin = en_pin_;
+        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+        if (config_.enable_pin_active_low) {
+            GPIO_InitStruct.Pull = GPIO_PULLUP;
+        } else {
+            GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+        }
+        HAL_GPIO_Init(en_port_, &GPIO_InitStruct);
+    }
+}
 // @brief Sets up all components of the axis,
 // such as gate driver and encoder hardware.
 void Axis::setup() {
+    use_enable_pin_update();
+
     motor_.setup();
 }
 
@@ -114,10 +128,10 @@ void Axis::step_cb() {
     }
 };
 
-void Axis::load_default_step_dir_pin_config(
-        const AxisHardwareConfig_t& hw_config, Config_t* config) {
-    config->step_gpio_pin = hw_config.step_gpio_pin;
-    config->dir_gpio_pin = hw_config.dir_gpio_pin;
+void Axis::load_default_step_dir_pin_config(const AxisHardwareConfig_t& hw_config, Config_t* config) {
+        config->step_gpio_pin = hw_config.step_gpio_pin;
+        config->dir_gpio_pin = hw_config.dir_gpio_pin;
+        config->en_gpio_pin = hw_config.en_gpio_pin;
 }
 
 void Axis::load_default_can_id(const int& id, Config_t& config){
@@ -129,6 +143,8 @@ void Axis::decode_step_dir_pins() {
     step_pin_ = get_gpio_pin_by_pin(config_.step_gpio_pin);
     dir_port_ = get_gpio_port_by_pin(config_.dir_gpio_pin);
     dir_pin_ = get_gpio_pin_by_pin(config_.dir_gpio_pin);
+    en_port_ = get_gpio_port_by_pin(config_.en_gpio_pin);
+    en_pin_ = get_gpio_pin_by_pin(config_.en_gpio_pin);
 }
 
 // @brief (de)activates step/dir input
@@ -140,7 +156,6 @@ void Axis::set_step_dir_active(bool active) {
         GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         HAL_GPIO_Init(dir_port_, &GPIO_InitStruct);
-
         // Subscribe to rising edges of the step GPIO
         GPIO_subscribe(step_port_, step_pin_, GPIO_PULLDOWN, step_cb_wrapper, this);
 
@@ -294,14 +309,37 @@ bool Axis::run_sensorless_control_loop() {
     });
     return check_for_errors();
 }
-
+void Axis::enable_pin_check() {
+    if (!encoder_.config_.pre_calibrated){return;}     // No work until encoder pre_calibrated set True
+    if (error_ != ERROR_NONE ) return;
+    if (config_.use_enable_pin) {
+        bool enable = HAL_GPIO_ReadPin(en_port_, en_pin_) ^ config_.enable_pin_active_low;
+        switch(current_state_){
+            case AXIS_STATE_IDLE: 
+                if (enable) requested_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL ;
+                break;
+            case AXIS_STATE_CLOSED_LOOP_CONTROL:
+                if(!enable) requested_state_ = AXIS_STATE_IDLE ;
+                break;
+            default :
+                break;
+        }
+       
+       /* if (enable && (current_state_ == AXIS_STATE_IDLE)) {
+            requested_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;   
+        } else if (!enable && (current_state_ != AXIS_STATE_IDLE)) {
+            requested_state_ = AXIS_STATE_IDLE;
+        }*/
+    }
+}
 bool Axis::run_closed_loop_control_loop() {
     if (!controller_.select_encoder(controller_.config_.load_encoder_axis)) {
         return error_ |= ERROR_CONTROLLER_FAILED, false;
     }
-
+    
     // To avoid any transient on startup, we intialize the setpoint to be the current position
     controller_.pos_setpoint_ = *controller_.pos_estimate_src_;
+
     controller_.input_pos_ = *controller_.pos_estimate_src_;
 
     // Avoid integrator windup issues
@@ -309,6 +347,7 @@ bool Axis::run_closed_loop_control_loop() {
 
     set_step_dir_active(config_.enable_step_dir);
     run_control_loop([this](){
+        //check enable pin
         // Note that all estimators are updated in the loop prefix in run_control_loop
         float current_setpoint;
         if (!controller_.update(&current_setpoint))
@@ -517,7 +556,7 @@ void Axis::run_state_machine_loop() {
                 if (!encoder_.is_ready_)
                     goto invalid_state_label;
                 watchdog_feed();
-                status = run_closed_loop_control_loop();
+                status = run_closed_loop_control_loop();  
             } break;
 
             case AXIS_STATE_IDLE: {
