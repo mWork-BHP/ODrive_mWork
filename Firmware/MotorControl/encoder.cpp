@@ -420,26 +420,29 @@ void Encoder::abs_spi_cb(){
              */
             if (mWorkErrorSPI_ == 2){
                 errorCodeFromAS_ = rawVal & 0x3fff;
-                mWorkErrorSPI_ = 0;
+                mWorkErrorSPI_ = statusOK;
                 return;
             }
             // Set data to GET ANGLE after clean Error Bit
             if (abs_spi_dma_tx_[0] == AS_CMD_ERROR){
                 abs_spi_dma_tx_[0] =AS_CMD_ANGLE;
-                mWorkErrorSPI_ = 2;
+                mWorkErrorSPI_ = statusGetBitError;
+                return;
+            }
+            // check error flag clear
+            if ((rawVal >> 14) & 1) {
+                abs_spi_dma_tx_[0] = AS_CMD_ERROR ;
+                mWorkErrorSPI_ = statusCleanError;
                 return;
             }
             // check if parity is correct (even) 
             if (ams_parity(rawVal)){
                 return;
             }
-            // check error flag clear
-            if ((rawVal >> 14) & 1) {
-                abs_spi_dma_tx_[0] = AS_CMD_ERROR ;
-                mWorkErrorSPI_ = 1;
-                return;
-            }
 /*
+        statusOK = 0,
+        statusCleanError = 1,
+        statusGetBitError =2,
             if (readErrorSPI == 1)return;
             else if (readErrorSPI == 2){ errorCodeFromAS_ = rawVal & 0x3fff;return;}
             else if (readErrorSPI > 2){ mWorkErrorSPI_ = false;return;}

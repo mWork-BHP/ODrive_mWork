@@ -18,6 +18,11 @@ public:
         AS_CMD_MAGNITUDE        = 0x3FFE | AS_FLAG_READ,
         AS_CMD_ANGLE            = 0x3FFF | AS_FLAG_PARITY | AS_FLAG_READ,
     } As5047Command;
+    enum mWorkStateError_t {
+        statusOK = 0,
+        statusCleanError = 1,
+        statusGetBitError =2,
+    };
     enum Error_t {
         ERROR_NONE = 0,
         ERROR_UNSTABLE_GAIN = 0x01,
@@ -132,7 +137,7 @@ public:
     uint32_t abs_spi_cr1;
     uint32_t abs_spi_cr2;
     bool mWorkFirstTime_ = true;
-    uint8_t mWorkErrorSPI_ = 0;
+    uint8_t mWorkErrorSPI_ = statusOK;
     uint16_t errorCodeFromAS_ = 0x0000;
     constexpr float getCoggingRatio(){
         return config_.cpr / 3600.0f;
