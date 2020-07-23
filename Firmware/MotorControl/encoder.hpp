@@ -7,6 +7,22 @@
 
 class Encoder {
 public:
+    typedef enum {
+        AS_FLAG_PARITY          = 0x8000,
+        AS_FLAG_READ            = 0x4000,
+    } As5047Flag;
+    typedef enum {
+        AS_CMD_NOP              = 0x0000,
+        AS_CMD_ERROR            = 0x0001 | AS_FLAG_READ,   // Reads error register of sensor and clear error flags
+        AS_CMD_DIAGNOSTICS      = 0x3FFD | AS_FLAG_READ,   // Reads automatic gain control and diagnostics info
+        AS_CMD_MAGNITUDE        = 0x3FFE | AS_FLAG_READ,
+        AS_CMD_ANGLE            = 0x3FFF | AS_FLAG_PARITY | AS_FLAG_READ,
+    } As5047Command;
+    enum mWorkStateError_t {
+        statusOK = 0,
+        statusCleanError = 1,
+        statusGetBitError =2,
+    };
     enum Error_t {
         ERROR_NONE = 0,
         ERROR_UNSTABLE_GAIN = 0x01,
@@ -82,7 +98,7 @@ public:
     Config_t& config_;
     Axis* axis_ = nullptr; // set by Axis constructor
     
-    bool mWorkErrorSPI_ = false;
+    
     Error_t error_ = ERROR_NONE;
     bool index_found_ = false;
     bool is_ready_ = false;
@@ -112,8 +128,7 @@ public:
     bool abs_spi_start_transaction();
     void abs_spi_cb();
     void abs_spi_cs_pin_init();
-    void mWork_abs_spi_cs_pin_init();
-    uint16_t abs_spi_dma_tx_[1] = {0xFFFF};
+    uint16_t abs_spi_dma_tx_[1] = {AS_CMD_ANGLE}; //read and reset error code AS_CMD_ERROR
     uint16_t abs_spi_dma_rx_[1];
     bool abs_spi_pos_updated_ = false;
     Mode_t mode_ = MODE_INCREMENTAL;
@@ -122,6 +137,8 @@ public:
     uint32_t abs_spi_cr1;
     uint32_t abs_spi_cr2;
     bool mWorkFirstTime_ = true;
+    uint8_t mWorkErrorSPI_ = statusOK;
+    uint16_t errorCodeFromAS_ = 0x0000;
     constexpr float getCoggingRatio(){
         return config_.cpr / 3600.0f;
     }
@@ -129,7 +146,6 @@ public:
     // Communication protocol definitions
     auto make_protocol_definitions() {
         return make_protocol_member_list(
-            make_protocol_property("mWorkFirstTime", &mWorkFirstTime_),
             make_protocol_property("error", &error_),
             make_protocol_ro_property("is_ready", &is_ready_),
             make_protocol_ro_property("index_found", const_cast<bool*>(&index_found_)),
@@ -145,6 +161,8 @@ public:
             make_protocol_property("pos_abs", &pos_abs_),
             make_protocol_ro_property("spi_error_rate", &spi_error_rate_),
             make_protocol_ro_property("mWorkErrorSPI", &mWorkErrorSPI_),
+            make_protocol_property("mWorkFirstTime", &mWorkFirstTime_),
+            make_protocol_property("errorCodeFromAS", &errorCodeFromAS_),
             make_protocol_object("config",
                 make_protocol_property("mode", &config_.mode),
                 make_protocol_property("use_index", &config_.use_index,
