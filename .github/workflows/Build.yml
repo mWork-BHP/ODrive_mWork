@@ -50,6 +50,6 @@ jobs:
     - name: Build
       run: |
         ./Firmware/build.sh
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-HexFile@v2
       with:
         path: ./Firmware/deploy # or path/to/artifact
