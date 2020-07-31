@@ -312,6 +312,7 @@ bool Axis::run_sensorless_control_loop() {
 void Axis::enable_pin_check() {
     if (!encoder_.config_.pre_calibrated){return;}     // No work until encoder pre_calibrated set True
     if (error_ != ERROR_NONE ) return;
+    if (encoder_.mWorkFirstTime_) return;
     if (config_.use_enable_pin) {
         bool enable = HAL_GPIO_ReadPin(en_port_, en_pin_) ^ config_.enable_pin_active_low;
         switch(current_state_){
