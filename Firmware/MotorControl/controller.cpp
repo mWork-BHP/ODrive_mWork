@@ -273,10 +273,10 @@ bool Controller::update(float* current_setpoint_output) {
                 return false;
             }
             if (std::abs(*vel_estimate_src) > config_.vel_limit_tolerance * vel_lim) {
-              if (!axis_->encoder_.mWorkFirstTime_){                
+              //if (!axis_->encoder_.mWorkFirstTime_){                
                     set_error(ERROR_OVERSPEED);
                     return false;
-              }   
+              //}   
             }
         }
     }

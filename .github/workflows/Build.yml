@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches: [ rc-v5-with-ENB ]
+  pull_request:
+    branches: [ rc-v5-with-ENB ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        BOARD_VERSION: ['v3.6-24V']
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set environment for board matrix
+      run: |
+        echo "::set-env name=CONFIG_BOARD_VERSION::${{ matrix.BOARD_VERSION }}"
+        echo "::set-env name=DEPLOY::${{ matrix.BOARD_VERSION }}"
+    - name: Set environment for download
+      run: |
+        mkdir $HOME/download
+        echo "::set-env name=DL_DIR::$HOME/download"
+    - name: Set environment for build tools
+      env:
+        GCC: gcc-arm-none-eabi-7-2017-q4-major
+        TUP: tup_0.7.9-0york0~18.04_amd64
+      run: |
+        echo "::set-env name=GCC_DIR::$DL_DIR/$GCC"
+        echo "::set-env name=GCC_ARCHIVE::$DL_DIR/$GCC-linux.tar.bz2"
+        echo "::set-env name=GCC_URL::https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2017q4/$GCC-linux.tar.bz2"
+        echo "::set-env name=TUP_DIR::$DL_DIR/$TUP"
+        echo "::set-env name=TUP_ARCHIVE::$DL_DIR/$TUP.deb"
+        echo "::set-env name=TUP_URL::http://ppa.launchpad.net/jonathonf/tup/ubuntu/pool/main/t/tup/$TUP.deb"
+    - name: Install libc
+      run: |
+        sudo apt-get install -y libc6-i386
+    - name: Setup GCC
+      run: |
+        if [ ! -e $GCC_DIR/bin/arm-none-eabi-gcc ]; then wget $GCC_URL -O $GCC_ARCHIVE; tar xfj $GCC_ARCHIVE -C $DL_DIR; fi
+        echo "::add-path::$GCC_DIR/bin"
+    - name: Setup Tup
+      run: |
+        if [ ! -e $TUP_DIR/bin/tup ]; then wget $TUP_URL -O $TUP_ARCHIVE; dpkg-deb -v -R $TUP_ARCHIVE $TUP_DIR; fi
+        echo "::add-path::$TUP_DIR/usr/bin"
+    - name: Build
+      run: |
+        ./Firmware/build.sh
+    - uses: actions/upload-artifact@v2
+      with:
+        name: HexFile  
+        path: ./Firmware/deploy # or path/to/artifact

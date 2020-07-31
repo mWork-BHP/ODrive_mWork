@@ -51,8 +51,14 @@ public:
     struct Config_t {
         ControlMode_t control_mode = CTRL_MODE_POSITION_CONTROL;  //see: ControlMode_t
         InputMode_t input_mode = INPUT_MODE_PASSTHROUGH;  //see: InputMode_t
+
+        /*Quay 1500RPM -> 1500* ((count)/60) * polepairs =1500* ((16384)/60)*21 = 1500*5734 =  8.600.000  (counts/s)
+        ->pos_gain = 8600000/ 16384 = 524
+        velgain = 10/8600000 = 0.000002 24/8600000 = 2.7*e-6
+        143360 ->vel_integrator_gain = 0.00016
+        */
         float pos_gain = 20.0f;                         // [(counts/s) / counts]
-        float vel_gain = 5.0f / 10000.0f;               // [A/(counts/s)]
+        float vel_gain = 5.0f / 10000.0f;               // [A/(counts/s)] 24/25
         // float vel_gain = 5.0f / 200.0f,              // [A/(rad/s)] <sensorless example>
         float vel_integrator_gain = 10.0f / 10000.0f;   // [A/(counts/s * s)]
         float vel_limit = 20000.0f;                     // [counts/s] Infinity to disable.
