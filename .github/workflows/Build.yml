@@ -52,5 +52,5 @@ jobs:
         ./Firmware/build.sh
     - uses: actions/upload-artifact@v2
       with:
-        name: HEX  
+        name: HexFile  
         path: ./Firmware/deploy # or path/to/artifact
