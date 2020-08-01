@@ -251,3 +251,5 @@ View Current
 --------
 
 start_liveplotter(lambda: [odrv0.axis0.motor.current_control.Ibus])
+
+start_liveplotter(lambda:[odrv0.axis0.motor.current_control.Iq_setpoint, odrv0.axis0.motor.current_control.Iq_measured])
