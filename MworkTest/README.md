@@ -101,7 +101,7 @@ odrv0.reboot()
 1. Connect Encoder
 -----------
 
-![Connect by 7414](odrive.png)
+![Connect by 7414](odrive1.png)
 
 
 - [x] The encoder's SCK, MISO (aka "DATA" on CUI encoders), GND and 3.3V should connect to the ODrive pins with the same label.
